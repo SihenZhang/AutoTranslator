@@ -2,16 +2,28 @@ package com.sihenzhang.autotranslator;
 
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.gson.JsonObject;
+import org.yaml.snakeyaml.DumperOptions;
+import org.yaml.snakeyaml.Yaml;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 public final class Utils {
     private Utils() {
     }
 
+    private static final Yaml YAML;
+
     private static final Pattern FORMAT_PATTERN = Pattern.compile("%(?:(\\d+)\\$)?([A-Za-z%]|$)");
 
     private static final Pattern TRANSLATABLE_PATTERN = Pattern.compile(".*\\p{L}+.*");
+
+    static {
+        var options = new DumperOptions();
+        options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+        YAML = new Yaml(options);
+    }
 
     /**
      * Checks if the given text contains translatable content by removing format patterns and checking for letter characters.
@@ -41,5 +53,24 @@ public final class Utils {
             source.entrySet().forEach(entry -> object.add(entry.getKey(), entry.getValue()));
         }
         return object;
+    }
+
+    public static void shutdownExecutor(ExecutorService service) {
+        service.shutdown();
+        try {
+            if (service.awaitTermination(3, TimeUnit.SECONDS)) {
+                service.shutdownNow();
+            }
+        } catch (InterruptedException interruptedexception) {
+            service.shutdownNow();
+        }
+    }
+
+    public static String toYaml(Object data) {
+        return YAML.dump(data);
+    }
+
+    public static <T> T parseYaml(String yaml) {
+        return YAML.load(yaml);
     }
 }

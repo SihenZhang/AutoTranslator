@@ -5,6 +5,9 @@ import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.sihenzhang.autotranslator.I18nManager;
 import com.sihenzhang.autotranslator.TranslationManager;
 import com.sihenzhang.autotranslator.Utils;
+import com.sihenzhang.autotranslator.WorldLoadStateManager;
+import com.sihenzhang.autotranslator.translate.TranslationKey;
+import com.sihenzhang.autotranslator.translate.TranslationTask;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.network.chat.contents.TranslatableFormatException;
@@ -41,29 +44,33 @@ public abstract class TranslatableContentsMixin {
             )
     )
     private String modifyWithFallback(String original) {
-        // 以下情况下无需翻译：
-        // 1. 当前语言下已经有该 key 对应的本地化内容，表明该文本就是本地化内容
-        // 2. 该文本是 fallback 值
-        // 3. 该文本和 key 完全相同，表明缺少默认语言下的本地化内容
-        boolean needTranslate = !I18nManager.hasInCurrentLanguage(this.key) &&
+        if (!TranslationManager.isReady() || WorldLoadStateManager.isWorldLoading()) {
+            return original;
+        }
+        // No translation needed in the following cases:
+        // 1. The key already has localized content in current language, indicating the text is already localized
+        // 2. The text is a fallback value
+        // 3. The text is identical to the key, indicating missing localization in default language
+        var needTranslate = !I18nManager.hasInCurrentLanguage(this.key) &&
                 !(this.fallback != null && this.fallback.equals(original)) &&
                 !this.key.equals(original);
         if (needTranslate && Utils.hasTranslatableText(original)) {
-            var ifPresent = TranslationManager.CACHE.getIfPresent(this.key);
-            if (ifPresent != null) {
-                return ifPresent;
+            var translationKey = new TranslationKey(this.key, original);
+            var cachedTranslation = TranslationManager.getIfPresent(translationKey);
+            if (cachedTranslation != null) {
+                return cachedTranslation.translatedText();
             } else {
-                TranslationManager.translate(this.key, original).thenAccept((result) -> {
+                TranslationManager.addTranslationTask(new TranslationTask(translationKey, (result) -> {
                     if (result != null) {
                         try {
-                            ImmutableList.Builder<FormattedText> builder = ImmutableList.builder();
-                            this.decomposeTemplate(result, builder::add);
+                            var builder = ImmutableList.<FormattedText>builder();
+                            this.decomposeTemplate(result.translatedText(), builder::add);
                             this.decomposedParts = builder.build();
                         } catch (TranslatableFormatException translatableformatexception) {
-                            this.decomposedParts = ImmutableList.of(FormattedText.of(result));
+                            this.decomposedParts = ImmutableList.of(FormattedText.of(result.translatedText()));
                         }
                     }
-                });
+                }));
             }
         }
         return original;
@@ -78,26 +85,30 @@ public abstract class TranslatableContentsMixin {
             )
     )
     private String modifyWithoutFallback(String original) {
-        // 以下情况下无需翻译：
-        // 1. 当前语言下已经有该 key 对应的本地化内容，表明该文本就是本地化内容
-        // 2. 该文本和 key 完全相同，表明缺少默认语言下的本地化内容
-        boolean needTranslate = !I18nManager.hasInCurrentLanguage(this.key) && !this.key.equals(original);
+        if (!TranslationManager.isReady() || WorldLoadStateManager.isWorldLoading()) {
+            return original;
+        }
+        // No translation needed in the following cases:
+        // 1. The key already has localized content in current language, indicating the text is already localized
+        // 2. The text is identical to the key, indicating missing localization in default language
+        var needTranslate = !I18nManager.hasInCurrentLanguage(this.key) && !this.key.equals(original);
         if (needTranslate && Utils.hasTranslatableText(original)) {
-            var ifPresent = TranslationManager.CACHE.getIfPresent(this.key);
-            if (ifPresent != null) {
-                return ifPresent;
+            var translationKey = new TranslationKey(this.key, original);
+            var cachedTranslation = TranslationManager.getIfPresent(translationKey);
+            if (cachedTranslation != null) {
+                return cachedTranslation.translatedText();
             } else {
-                TranslationManager.translate(this.key, original).thenAccept((result) -> {
+                TranslationManager.addTranslationTask(new TranslationTask(translationKey, (result) -> {
                     if (result != null) {
                         try {
-                            ImmutableList.Builder<FormattedText> builder = ImmutableList.builder();
-                            this.decomposeTemplate(result, builder::add);
+                            var builder = ImmutableList.<FormattedText>builder();
+                            this.decomposeTemplate(result.translatedText(), builder::add);
                             this.decomposedParts = builder.build();
                         } catch (TranslatableFormatException translatableformatexception) {
-                            this.decomposedParts = ImmutableList.of(FormattedText.of(result));
+                            this.decomposedParts = ImmutableList.of(FormattedText.of(result.translatedText()));
                         }
                     }
-                });
+                }));
             }
         }
         return original;

@@ -130,6 +130,28 @@ dependencies {
     // Example project dependency using a sister or child project:
     // implementation project(":myproject")
 
+    jarJar(implementation("org.yaml:snakeyaml")) {
+        version {
+            // The version range your mod is actually compatible with.
+            // Note that you may receive a *lower* version than your preferred if another
+            // Mod is only compatible up to 1.7.24, for example, your mod might get 1.7.24 at runtime.
+            strictly '[2.0, 3.0)'
+            prefer '2.3' // The version actually used in your dev workspace
+        }
+    }
+    additionalRuntimeClasspath "org.yaml:snakeyaml:2.3"
+
+    jarJar(implementation("com.github.ben-manes.caffeine:caffeine")) {
+        version {
+            // The version range your mod is actually compatible with.
+            // Note that you may receive a *lower* version than your preferred if another
+            // Mod is only compatible up to 1.7.24, for example, your mod might get 1.7.24 at runtime.
+            strictly '[3.0, 4.0)'
+            prefer '3.1.8' // The version actually used in your dev workspace
+        }
+    }
+    additionalRuntimeClasspath "com.github.ben-manes.caffeine:caffeine:3.1.8"
+
     // For more info:
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
